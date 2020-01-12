@@ -181,11 +181,14 @@ int main(int argc, char *argv[]){
   msg_count_ptr = (void*)sendbuf + sizeof(struct ether_header);
 
   if(prog_args.use_udp){
+    //set headers to zeros
+    bzero((void*)iph, sizeof(struct iphdr) + sizeof(struct udphdr));
     //write in ip header
     iph->ihl = 5; //header len (std)
     iph->version = 4;
     iph->tos = 16;
-    iph->id = htons(10201);
+    //iph->frag_off = 0;
+    iph->id = htons(34567);
     iph->ttl = IPDEFTTL;
     iph->protocol = IPPROTO_UDP;
     iph->saddr = inet_addr("192.168.1.10");
@@ -193,8 +196,9 @@ int main(int argc, char *argv[]){
 
     //write in udp header
     udph->source = htons(32154);
-    udph->dest = htons(32155);
+    udph->dest = htons(32154);
     udph->len = htons(prog_args.msg_size - sizeof(struct iphdr));
+    udph->check = checksum((unsigned short*)udph, (prog_args.msg_size - sizeof(struct iphdr)/2));
 
     //write in ip hdr len
     iph->tot_len = htons(prog_args.msg_size);
@@ -208,7 +212,7 @@ int main(int argc, char *argv[]){
 
   clock_gettime(CLOCK_REALTIME, &start);
   while(msg_count < prog_args.msg_count){
-    *msg_count_ptr = msg_count;
+    //*msg_count_ptr = msg_count;
     send_count = sendto(sockfd, sendbuf, tx_len, 0, (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll));
     if(send_count < 0){
       msg_count_fault++;
