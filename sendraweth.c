@@ -33,9 +33,10 @@ struct progArgs_t {
   char *dst_mac;
   uint8_t pattern;
   bool use_udp;
+  useconds_t delay;
 };
 
-static const char *opt_string = "b:i:d:c:p:uh?";
+static const char *opt_string = "b:i:d:c:p:t:uh?";
 
 void display_usage(){
   printf("sendraweth -b (msg size in bytes) -c (msg count) -i (interface) -s (source mac addr) -d (destination mac addr) -p (hex pattern of payload)\n");
@@ -44,6 +45,7 @@ void display_usage(){
   printf("\t-c\t1\n");
   printf("\t-i\teth0\n");
   printf("\t-s\t00:00:00:00:00:00\n");
+  printf("\t-t\t0\n");
   printf("\t-p\t01\n");
 }
 
@@ -100,6 +102,9 @@ int main(int argc, char *argv[]){
           printf("Message len must be \"%d <= len <= %d\"\n", ETH_ZLEN, ETH_DATA_LEN);
           exit(EXIT_FAILURE); 
         }
+        break;
+      case 't':
+        scanf_result = sscanf(optarg, "%u", &prog_args.delay);
         break;
       case 'c':
         scanf_result = sscanf(optarg, "%zu", &prog_args.msg_count);
@@ -214,6 +219,7 @@ int main(int argc, char *argv[]){
   while(msg_count < prog_args.msg_count){
     //*msg_count_ptr = msg_count;
     send_count = sendto(sockfd, sendbuf, tx_len, 0, (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll));
+    usleep(prog_args.delay);
     if(send_count < 0){
       msg_count_fault++;
     }
