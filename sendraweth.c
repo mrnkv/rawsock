@@ -14,13 +14,52 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define BUF_SIZE    65535 
+#define BUF_SIZE    65535
+
+uint16_t udp_checksum(const void *buff, size_t len, in_addr_t src_addr, in_addr_t dest_addr)
+{
+         const uint16_t *buf=buff;
+         uint16_t *ip_src=(void *)&src_addr, *ip_dst=(void *)&dest_addr;
+         uint32_t sum;
+         size_t length=len;
+ 
+         // Calculate the sum                                            //
+         sum = 0;
+         while (len > 1)
+         {
+                 sum += *buf++;
+                 if (sum & 0x80000000)
+                         sum = (sum & 0xFFFF) + (sum >> 16);
+                 len -= 2;
+         }
+ 
+         if ( len & 1 )
+                 // Add the padding if the packet lenght is odd          //
+                 sum += *((uint8_t *)buf);
+ 
+         // Add the pseudo-header                                        //
+         sum += *(ip_src++);
+         sum += *ip_src;
+ 
+         sum += *(ip_dst++);
+         sum += *ip_dst;
+ 
+         sum += htons(IPPROTO_UDP);
+         sum += htons(length);
+ 
+         // Add the carries                                              //
+         while (sum >> 16)
+                 sum = (sum & 0xFFFF) + (sum >> 16);
+ 
+         // Return the one's complement of sum                           //
+         return ( (uint16_t)(~sum)  );
+ }
 
 unsigned short checksum(unsigned short* buff, int _16bitword)
 {
   unsigned long sum;
   for(sum=0;_16bitword>0;_16bitword--)
-    sum+=htons(*(buff)++);
+    sum+=(*(buff)++);
   sum = ((sum >> 16) + (sum & 0xFFFF));
   sum += (sum>>16);
   return (unsigned short)(~sum);
@@ -199,11 +238,17 @@ int main(int argc, char *argv[]){
     iph->saddr = inet_addr("192.168.1.10");
     iph->daddr = inet_addr("192.168.1.20");
 
+
     //write in udp header
     udph->source = htons(32154);
     udph->dest = htons(32154);
     udph->len = htons(prog_args.msg_size - sizeof(struct iphdr));
-    udph->check = checksum((unsigned short*)udph, (prog_args.msg_size - sizeof(struct iphdr)/2));
+
+    //udph->check = checksum((unsigned short*)udph, (prog_args.msg_size - sizeof(struct iphdr))/2);
+    udph->check = udp_checksum((unsigned short*)udph, 
+        (prog_args.msg_size - sizeof(struct iphdr)),
+        inet_addr("192.168.1.10"),
+        inet_addr("192.168.1.20"));
 
     //write in ip hdr len
     iph->tot_len = htons(prog_args.msg_size);
