@@ -15,6 +15,7 @@ struct prog_args_t{
   char low_end_if[IFNAMSIZ];
   int high_speed;
   int low_speed;
+  int cpu_freq;
 } prog_args_t;
 
 
@@ -22,5 +23,6 @@ void parse_args(int argc, char **argv, struct prog_args_t *args);
 int get_sock_fd(char *if_name);
 void prepare_flow_control_pkt(uint8_t *pkt);
 void set_flow_ctrl_delay(uint8_t *pkt, uint16_t delay);
+uint64_t rdtsc();
 
 #endif
